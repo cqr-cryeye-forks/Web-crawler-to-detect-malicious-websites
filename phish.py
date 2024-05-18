@@ -1,191 +1,199 @@
-import sys,bs4,re
+import re
+import json
+import argparse
+import pathlib
+from typing import Final
 from urllib.request import urlopen
- 
-'''
-Parameters taken in consideration
-1.domain_length
-2.unique characters
-3.brand name presence
-4.url length
-5.website rank on alexa
-'''
+from urllib.error import URLError
+from urllib.parse import urlparse
+from bs4 import BeautifulSoup
 
-d={}
-score = [0,0,0,0,0]
-
-def check_phish(url):
-	total_score=0
-	final_score=0
-	rev_ratio=0
-	flag=0
-	a=re.search(r'.+[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}.*',url)
-	if(a!=None):
-		final_score=0.90
-		print("Final score : ",final_score)
-		sys.exit(0)
-
-	only_dom  = re.match(r"^(https?:\/\/)?(www.)?([\da-z\.-]+)\.([a-z\.]{2,6})(.*)\/?$",url)
-              sys.exit(0)
-
-	if(only_dom!=None):
-		print(only_dom.groups())
-	else:
-		print("No match")
-	print("\nDomain Length");	
-	print("--------------------")
-	domain_length  = len(only_dom.group(3))
-	print("domain length : ",domain_length)
-	#-----calculating score------
-	if(domain_length >= 1 and domain_length <= 4):
-		score[0]=7
-	elif(domain_length > 4 and domain_length<=7):
-		score[0]=6
-	elif(domain_length > 8 and domain_length<=10):
-		score[0]=5
-	elif(domain_length>10):
-		score[0]=3
-
-	print("\nURL length")
-	print("--------------------")
-	url_length = len(only_dom.group(3)) + len(only_dom.group(5))
-	print("url length : ",url_length)
-	#-----calculating score------
-	if(url_length==domain_length):
-		score[1]=2
-	elif(url_length >= 100):
-		score[1]=8
-	elif(url_length > 40 and url_length <=100):
-		score[1]=7
-	elif(url_length >30 and url_length<=40):
-		score[1]=6
-	elif(url_length >20 and url_length<=30):
-		score[1]=5
-	elif(url_length >10 and url_length<=20):
-		score[1]=4
-	elif(url_length<=10):
-		score[1]=3
-
-	for i in set(only_dom.group(3)):
-		d[i]=only_dom.group(3).count(i)
-	print("\nUnique character ratio")
-	print("--------------------")
-	ratio=len(d)/len(only_dom.group(3))
-	print(" Ratio : ",ratio)
-	if(ratio>0 and ratio<=0.25):
-		score[2]=8
-	elif(ratio>0.25 and ratio<=0.40):
-		score[2]=7
-	elif(ratio>0.40 and ratio<=0.55):
-		score[2]=6
-	elif(ratio>0.55 and ratio<=0.70):
-		score[2]=5
-	elif(ratio>0.70 and ratio<=0.80):
-		score[2]=4
-	elif(ratio>0.80):
-		score[2]=3
+def is_ip_address(url):
+    return re.search(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', url) is not None
 
 
-	print("\nBrand name presence")
-	print("--------------------")
+def get_domain_info(url):
+    parsed_url = urlparse(url)
+    domain = parsed_url.hostname
+    path = parsed_url.path
+    return domain, path
 
-	brand_names = ["google","yahoo","g00gle","yah00","runescape","vogella","v0gella"]
-	ignore_names = ["google-melange","google-styleguide","googlesciencefair","thinkwithgoogle","googleforentrepreneurs","withgoogle"]
-	malicious_names = ["account","free","membs","membership","hacks","lottery","prize","money"]
 
-	for i in brand_names:
-		if(only_dom.group(3).find(i)!=-1):
-			if(only_dom.group(3)==i):
-				print("Not Phishing")
-				sys.exit(0)
-			regex1 = ".*\."+i+"\..*"
-			regex3 = ".*\."+i
-			if(re.match(regex1,only_dom.group(3)) or re.match(regex3,only_dom.group(3))):
-				print("Not phishing")
-				sys.exit(0)
-			regex2 = ".*"+i+".*"
-			if(re.match(regex2, only_dom.group(3))):
-				flag=flag+1
-				print("detected brand name")
-		# FOR IGNORING NON-PHISHING SITES !!
-			for j in ignore_names:
-				regex2= ".*\."+j+"\..*"
-				if(re.match(regex2,only_dom.group(3))):
-					print("Not phishing")
-					sys.exit(0)
-			for k in malicious_names:
-				if(only_dom.group(3).find(k)!=-1):
-					flag=flag+1
-					print("Suspected phishing")
-	if(flag==1):
-		score[3]=8
-	elif(flag==2):
-		score[3]=9
-	elif(flag==3):
-		score[3]=10
-	elif(flag>3):
-		score[3]=10	
-	elif(flag==0):
-		score[3]=3
+def domain_length_score(domain_length):
+    if 1 <= domain_length <= 4:
+        return 7
+    elif 4 < domain_length <= 7:
+        return 6
+    elif 8 <= domain_length <= 10:
+        return 5
+    elif domain_length > 10:
+        return 3
+    return 0
 
-	print("SCORE[3] : ",score[3])
 
-					
-	print("\nGlobal rank of website")
-	print("---------------------------")
+def url_length_score(url_length, domain_length):
+    if url_length == domain_length:
+        return 2
+    elif url_length >= 100:
+        return 8
+    elif 40 < url_length <= 100:
+        return 7
+    elif 30 < url_length <= 40:
+        return 6
+    elif 20 < url_length <= 30:
+        return 5
+    elif 10 < url_length <= 20:
+        return 4
+    elif url_length <= 10:
+        return 3
+    return 0
 
-	try:
-		str1 = bs4.BeautifulSoup(urlopen("http://www.alexa.com/siteinfo/"+ url).read(), "xml")		
-	except urllib.URLError:
-		print("URL error : ")	
-	list_rank=re.findall(r"metrics-data align-vmiddle..([0-9,]*)<\/strong>",str(str1))
-	if(len(list_rank)!=0):
-		list_rank[0].strip('''metrics-data align-vmiddle">''')
-		list_rank[0]=list_rank[0].replace(',','')       
-		list_rank[0]=int(list_rank[0])
-		print(list_rank[0])
-		if(list_rank[0]>0 and list_rank[0]<50000):
-			score[4]=1
-		elif(list_rank[0]>=50000 and list_rank[0]<=100000):
-			score[4]=2
-		elif(list_rank[0]>100000):
-			score[4]=8
-		else:
-			print("sorry invalid site name")
-	else:
-		print("No rank for this site")
-		score[4]=10
-#-------calculation of final score--------------
 
-	for i in score:
-		total_score=total_score+i
-	final_score=total_score/50
-	print("\nPercentage to be a phishing site : ",(final_score*100))
+def unique_character_ratio_score(ratio):
+    if 0 < ratio <= 0.25:
+        return 8
+    elif 0.25 < ratio <= 0.40:
+        return 7
+    elif 0.40 < ratio <= 0.55:
+        return 6
+    elif 0.55 < ratio <= 0.70:
+        return 5
+    elif 0.70 < ratio <= 0.80:
+        return 4
+    elif ratio > 0.80:
+        return 3
+    return 0
 
-	if(final_score>=0.50):
-		print("\n----------More than 50 percent---------")
-		print("--> Checking for password fields")
-		str2 = bs4.BeautifulSoup(urlopen(url).read(),"xml")
-		str2=str(str2)
-		if(str2.find('''type="password"''')!=-1):
-			print("::: Password fields present")
-			rev_ratio = (total_score+9)/60
-			print("--> Revised final percent : ",rev_ratio*100)
-			flag=1
-		else:	
-			flag=0
-			print("::: No password fields")
-	print("Conclusion")
-	print("--------------------")
-	
-	if(final_score>=0.50):
-		if(flag==1):
-			print("Most probably a phishing site with ",rev_ratio*100,"%")
-		elif(flag==0):
-			print("Most probably a phishing site with ",final_score*100,"%")
-	else:
-		print("Not a phishing site")
 
-if __name__=="__main__":
-	url = str(sys.argv[1])
-	check_phish(url)
+def brand_name_score(domain, brand_names, ignore_names, malicious_names):
+    flag = 0
+    for brand in brand_names:
+        if brand in domain:
+            if domain == brand or re.match(rf".*\.{brand}\..*", domain) or re.match(rf".*\.{brand}", domain):
+                return "Not phishing"
+            if re.match(rf".*{brand}.*", domain):
+                flag += 1
 
+            for ignore in ignore_names:
+                if re.match(rf".*\.{ignore}\..*", domain):
+                    return "Not phishing"
+            for malicious in malicious_names:
+                if malicious in domain:
+                    flag += 1
+    return flag
+
+
+def alexa_rank_score(url):
+    try:
+        alexa_data = urlopen(f"http://www.alexa.com/siteinfo/{url}").read()
+        soup = BeautifulSoup(alexa_data, "lxml")
+        list_rank = re.findall(r"metrics-data align-vmiddle..([0-9,]*)<\/strong>", str(soup))
+        if list_rank:
+            rank = int(list_rank[0].replace(',', ''))
+            if 0 < rank < 50000:
+                return 1, rank
+            elif 50000 <= rank <= 100000:
+                return 2, rank
+            elif rank > 100000:
+                return 8, rank
+        return 10, None
+    except URLError:
+        return 10, None
+
+
+def check_phish(url, output_path):
+    data = {
+        "url": url,
+        "domain_length": 0,
+        "url_length": 0,
+        "unique_character_ratio": 0,
+        "brand_name_score": 0,
+        "alexa_rank_score": 0,
+        "alexa_rank": None,
+        "final_score": 0,
+        "phishing_probability": 0
+    }
+
+    if is_ip_address(url):
+        data["final_score"] = 0.90
+        data["phishing_probability"] = 90
+        with open(output_path, 'w') as f:
+            json.dump(data, f, indent=4)
+        return
+
+    domain, path = get_domain_info(url)
+    if not domain:
+        data["final_score"] = "Invalid URL"
+        with open(output_path, 'w') as f:
+            json.dump(data, f, indent=4)
+        return
+
+    score = [0] * 5
+
+    data["domain_length"] = len(domain)
+    score[0] = domain_length_score(data["domain_length"])
+
+    data["url_length"] = len(domain) + len(path)
+    score[1] = url_length_score(data["url_length"], data["domain_length"])
+
+    unique_chars = set(domain)
+    data["unique_character_ratio"] = len(unique_chars) / len(domain)
+    score[2] = unique_character_ratio_score(data["unique_character_ratio"])
+
+    brand_names = ["google", "yahoo", "g00gle", "yah00", "runescape", "vogella", "v0gella"]
+    ignore_names = ["google-melange", "google-styleguide", "googlesciencefair", "thinkwithgoogle", "googleforentrepreneurs", "withgoogle"]
+    malicious_names = ["account", "free", "membs", "membership", "hacks", "lottery", "prize", "money"]
+
+    flag = brand_name_score(domain, brand_names, ignore_names, malicious_names)
+    if isinstance(flag, str):
+        data["final_score"] = flag
+        with open(output_path, 'w') as f:
+            json.dump(data, f, indent=4)
+        return
+    else:
+        data["brand_name_score"] = flag
+        if flag == 1:
+            score[3] = 8
+        elif flag == 2:
+            score[3] = 9
+        elif flag >= 3:
+            score[3] = 10
+        elif flag == 0:
+            score[3] = 3
+
+    score[4], data["alexa_rank"] = alexa_rank_score(url)
+    data["alexa_rank_score"] = score[4]
+
+    total_score = sum(score)
+    final_score = total_score / 50
+    data["final_score"] = final_score
+    data["phishing_probability"] = final_score * 100
+
+    if final_score >= 0.50:
+        try:
+            page_content = urlopen(url).read()
+            page_soup = BeautifulSoup(page_content, "lxml")
+            if page_soup.find_all(attrs={"type": "password"}):
+                rev_ratio = (total_score + 9) / 60
+                data["phishing_probability"] = rev_ratio * 100
+        except URLError:
+            data["phishing_probability"] = "Failed to open URL for password check"
+    else:
+        data["phishing_probability"] = final_score * 100
+
+    with open(output_path, 'w') as f:
+        json.dump(data, f, indent=2)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Phishing URL Checker")
+    parser.add_argument('--target', type=str, required=True, help="Target URL to check")
+    parser.add_argument('--output', type=str, required=True, help="Output JSON file path")
+    args = parser.parse_args()
+
+    target_url = args.target
+    output_path = args.output
+
+    OUTPUT_JSON: Final[pathlib.Path] = pathlib.Path(__file__).parent / args.output
+
+    check_phish(target_url, OUTPUT_JSON)
