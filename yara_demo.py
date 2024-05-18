@@ -1,69 +1,76 @@
 import re
 import yara
 import sys
-import os.path
+import os
+import logging
 
-#---------------------------------------------------------------------
-#This is for rule matching from yara. Takes care of all the regex's
-data=0
-'''
-def mycallback(data):
-	print(data)
-	a=bool(input("continue to next rule?"))
-	if(a):
-		yara.CALLBACK_CONTINUE
-	else:
-		yara.CALLBACK_ABORT
-'''
-def run_yara(filename):
-	matched = rules.match(filename)	
-	a=[]
-	for key,value in matched.items():
-		print(len(value))
-		for i in range(len(value)):
-			count = len(value[i]['strings'])
-			rule_name = str(value[i]['rule'])
-			print(rule_name+" "+str(count)+" times.")
-			for j in range(0,count):
-				rule_match =  str(value[i]['strings'][j]['data'])
-				if(rule_name == "hidden_link"):
-					a.append(rule_match)
-				print("match ",str(i)," : ",rule_match)
-	
-#---------------------------------------------------------------
-#Looking for hidden links and checking for equality of colors
-		link1_color="black"
-		body1_color="white"
-		body2_color="white"
-		for v in a:
-			body1=re.search("background-color *: *(.*?);",v)
-			if(body1!=None):
-				body1_color=body1.group(1)
-	
-			body2=re.search("bgcolor *= *[\"\'](.*?)[\"\']",v)
-			if(body2!=None):
-				body2_color=body2.group(1)
-	
-			link1=re.search("[^-]color *: *(.*?);",v)
-			if(link1):
-				link1_color=link1.group(1)
-		if(link1_color==body1_color or link1_color==body2_color):
-			print("Hidden link found")
-	print("done")
-#---------------------------------------------------------------
+logging.basicConfig(level=logging.INFO)
 
-if __name__=="__main__":
-	i=1
-	file_name = "./html/"+str(i)+".html"
-	rules = yara.compile(sys.argv[1])
-	li=[]
-	while(True):
-		if(os.path.isfile(file_name)):
-			print("-------------------------------------")
-			print("GOT "+file_name)
-			run_yara(file_name)
-			li.append(file_name)
-		if(file_name in li):
-			i=i+1
-			file_name="./html/"+str(i)+".html"
 
+def run_yara(filename, rules):
+    matched = rules.match(filename)
+    hidden_links = []
+
+    for match in matched:
+        rule_name = match.rule
+        strings = match.strings
+
+        logging.info(f"{rule_name} matched {len(strings)} times.")
+
+        for string in strings:
+            match_data = string[2]
+            logging.info(f"match: {match_data}")
+
+            if rule_name == "hidden_link":
+                hidden_links.append(match_data)
+
+    link1_color = "black"
+    body1_color = "white"
+    body2_color = "white"
+
+    for v in hidden_links:
+        body1 = re.search(r"background-color *: *(.*?);", v)
+        if body1:
+            body1_color = body1.group(1)
+
+        body2 = re.search(r'bgcolor *= *["\'](.*?)[\'"]', v)
+        if body2:
+            body2_color = body2.group(1)
+
+        link1 = re.search(r"[^-]color *: *(.*?);", v)
+        if link1:
+            link1_color = link1.group(1)
+
+    if link1_color == body1_color or link1_color == body2_color:
+        logging.info("Hidden link found")
+
+    logging.info("done")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python script.py <yara_rules_file>")
+        exit(1)
+
+    rules_file = sys.argv[1]
+
+    if not os.path.isfile(rules_file):
+        print(f"Yara rules file {rules_file} does not exist.")
+        exit(1)
+
+    try:
+        rules = yara.compile(rules_file)
+    except yara.SyntaxError as e:
+        print(f"Error compiling Yara rules: {e}")
+        exit(1)
+
+    i = 1
+    while True:
+        file_name = f"./html/{i}.html"
+        if os.path.isfile(file_name):
+            logging.info("-------------------------------------")
+            logging.info(f"GOT {file_name}")
+            run_yara(file_name, rules)
+            i += 1
+        else:
+            break
