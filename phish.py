@@ -2,6 +2,7 @@ import re
 import json
 import argparse
 import pathlib
+import time
 from typing import Final
 from urllib.request import urlopen
 from urllib.error import URLError
@@ -101,7 +102,7 @@ def alexa_rank_score(url):
         return 10, None
 
 
-def check_phish(url, output_path):
+def check_phish(url, output_path=None):
     data = {
         "url": url,
         "domain_length": 0,
@@ -114,19 +115,23 @@ def check_phish(url, output_path):
         "phishing_probability": 0
     }
 
+    for scheme in ["http://", "https://"]:
+        if url.startswith(scheme):
+            url = url[len(scheme):]
+
     if is_ip_address(url):
         data["final_score"] = 0.90
         data["phishing_probability"] = 90
-        with open(output_path, 'w') as f:
-            json.dump(data, f, indent=4)
-        return
+        # with open(output_path, 'w') as jf:
+        #     json.dump(data, jf, indent=4)
+        return data
 
     domain, path = get_domain_info(url)
     if not domain:
         data["final_score"] = "Invalid URL"
-        with open(output_path, 'w') as f:
-            json.dump(data, f, indent=4)
-        return
+        # with open(output_path, 'w') as jf:
+        #     json.dump(data, jf, indent=4)
+        return data
 
     score = [0] * 5
 
@@ -147,9 +152,9 @@ def check_phish(url, output_path):
     flag = brand_name_score(domain, brand_names, ignore_names, malicious_names)
     if isinstance(flag, str):
         data["final_score"] = flag
-        with open(output_path, 'w') as f:
-            json.dump(data, f, indent=4)
-        return
+        # with open(output_path, 'w') as jf:
+        #     json.dump(data, jf, indent=2)
+        return data
     else:
         data["brand_name_score"] = flag
         if flag == 1:
@@ -181,19 +186,21 @@ def check_phish(url, output_path):
     else:
         data["phishing_probability"] = final_score * 100
 
-    with open(output_path, 'w') as f:
-        json.dump(data, f, indent=2)
+    # with open(output_path, 'w') as jf:
+    #     json.dump(data, jf, indent=2)
+    return data
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Phishing URL Checker")
     parser.add_argument('--target', type=str, required=True, help="Target URL to check")
-    parser.add_argument('--output', type=str, required=True, help="Output JSON file path")
+    # parser.add_argument('--output', type=str, required=True, help="Output JSON file path")
     args = parser.parse_args()
 
     target_url = args.target
-    output_path = args.output
+    # output_path = args.output
 
-    OUTPUT_JSON: Final[pathlib.Path] = pathlib.Path(__file__).parent / args.output
+    # OUTPUT_JSON: Final[pathlib.Path] = pathlib.Path(__file__).parent / args.output
 
-    check_phish(target_url, OUTPUT_JSON)
+    data = check_phish(target_url)
+    print(data)
