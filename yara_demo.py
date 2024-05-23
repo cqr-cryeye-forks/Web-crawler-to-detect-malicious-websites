@@ -1,6 +1,6 @@
+import argparse
 import re
 import yara
-import sys
 import os
 import logging
 
@@ -48,11 +48,11 @@ def run_yara(filename, rules):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python script.py <yara_rules_file>")
-        exit(1)
+    parser = argparse.ArgumentParser(description='Process Yara rules file.')
+    parser.add_argument('--yara-file-rule', dest="rule", help='Path to the Yara rules file')
+    args = parser.parse_args()
 
-    rules_file = sys.argv[1]
+    rules_file = args.rule
 
     if not os.path.isfile(rules_file):
         print(f"Yara rules file {rules_file} does not exist.")
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     try:
         rules = yara.compile(rules_file)
-    except yara.SyntaxError as e:
+    except SyntaxError as e:
         print(f"Error compiling Yara rules: {e}")
         exit(1)
 
