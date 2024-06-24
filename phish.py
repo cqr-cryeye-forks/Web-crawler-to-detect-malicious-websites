@@ -9,6 +9,7 @@ from urllib.error import URLError
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
+
 def is_ip_address(url):
     return re.search(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', url) is not None
 
@@ -146,7 +147,8 @@ def check_phish(url, output_path=None):
     score[2] = unique_character_ratio_score(data["unique_character_ratio"])
 
     brand_names = ["google", "yahoo", "g00gle", "yah00", "runescape", "vogella", "v0gella"]
-    ignore_names = ["google-melange", "google-styleguide", "googlesciencefair", "thinkwithgoogle", "googleforentrepreneurs", "withgoogle"]
+    ignore_names = ["google-melange", "google-styleguide", "googlesciencefair", "thinkwithgoogle",
+                    "googleforentrepreneurs", "withgoogle"]
     malicious_names = ["account", "free", "membs", "membership", "hacks", "lottery", "prize", "money"]
 
     flag = brand_name_score(domain, brand_names, ignore_names, malicious_names)
