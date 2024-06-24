@@ -38,7 +38,8 @@ if __name__ == "__main__":
 
     OUTPUT: pathlib.Path = pathlib.Path(__file__).parent / args.output
 
-    scripts = ['crawl.py', 'yara_demo.py', 'phish.py']
+    # scripts = ['crawl.py', 'yara_demo.py', 'phish.py']
+    scripts = ['crawl.py', 'phish.py']
 
     all_outputs = {}
     data_list = []
@@ -56,27 +57,5 @@ if __name__ == "__main__":
         json.dump(all_outputs, jf, indent=2)
 
     print(f"Output has been written to {args.output}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
