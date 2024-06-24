@@ -1,4 +1,5 @@
 import argparse
+from http.client import RemoteDisconnected
 import json
 import time
 from urllib.parse import urljoin
@@ -10,12 +11,10 @@ import pathlib
 from typing import Final
 
 
-def crawl(start_url, output_file=None):
-    cnt = 0
-
+def crawl(url, output_file=None):
     for scheme in ["http://", "https://"]:
-        if start_url.startswith(scheme):
-            url = start_url[len(scheme):]
+        if url.startswith(scheme):
+            url = url[len(scheme):]
 
     start_url1 = "http://" + url
     start_url2 = "https://" + url
@@ -25,9 +24,9 @@ def crawl(start_url, output_file=None):
     errors = []
 
     # Ensure directories exist
-    os.makedirs("html", exist_ok=True)
-    os.makedirs("header", exist_ok=True)
-
+    # os.makedirs("html", exist_ok=True)
+    # os.makedirs("header", exist_ok=True)
+    # cnt = 0
     while urls:
         current_url = urls.pop(0)
 
@@ -39,15 +38,15 @@ def crawl(start_url, output_file=None):
             continue
 
         html_text = response.read()
-        header_text = str(response.info())
         soup = BeautifulSoup(html_text, 'html.parser')
-        soup_header = BeautifulSoup(header_text, 'html.parser')
+        # header_text = str(response.info())
+        # soup_header = BeautifulSoup(header_text, 'html.parser')
 
-        cnt += 1
-        with open(f"html/{cnt}.html", "w") as html_file:
-            html_file.write(soup.prettify())
-        with open(f"header/{cnt}", "w") as header_file:
-            header_file.write(soup_header.prettify())
+        # cnt += 1
+        # with open(f"html/{cnt}.html", "w") as html_file:
+        #     html_file.write(soup.prettify())
+        # with open(f"header/{cnt}", "w") as header_file:
+        #     header_file.write(soup_header.prettify())
 
         links = soup.find_all('a', href=True)
         temp_links = []
@@ -84,6 +83,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # output_path: Final[pathlib.Path] = pathlib.Path(__file__).parent / args.output
-
-    output_data = crawl(args.target)
+    try:
+        output_data = crawl(args.target)
+    except RemoteDisconnected as e:
+        output_data = {
+            "Error": "Remote end closed connection without response"
+        }
     print(output_data)
