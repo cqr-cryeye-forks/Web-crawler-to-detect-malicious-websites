@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    output_path: Final[pathlib.Path] = pathlib.Path(__file__).parent / args.output
+    output_path = args.output
     try:
         output_data = {
             "crawl": crawl(args.target)
