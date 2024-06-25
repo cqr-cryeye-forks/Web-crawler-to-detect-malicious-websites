@@ -27,12 +27,12 @@ def crawl(url, output_file=None):
     # os.makedirs("html", exist_ok=True)
     # os.makedirs("header", exist_ok=True)
     # cnt = 0
-    while urls:
-        current_url = urls.pop(0)
+    for url in urls:
+        current_url = url
 
         try:
             response = urlopen(current_url)
-        except URLError as e:
+        except Exception as e:
             error_message = f"Failed to open {current_url}: {e}"
             errors.append({"error": error_message})
             continue
@@ -52,11 +52,16 @@ def crawl(url, output_file=None):
         temp_links = []
 
         for tag in links:
-            href = urljoin(current_url, tag['href'])
-            if href not in visited:
-                temp_links.append(href)
-                urls.append(href)
-                visited.append(href)
+            try:
+                href = urljoin(current_url, tag['href'])
+                if href not in visited:
+                    temp_links.append(href)
+                    urls.append(href)
+                    visited.append(href)
+            except ValueError as e:
+                error_message = f"Failed to open {current_url}: {e}"
+                errors.append({"error": error_message})
+                continue
 
         data.append({"link": current_url})
         for link in temp_links:
@@ -70,23 +75,40 @@ def crawl(url, output_file=None):
         output_data = {
             "Error": "Nothing found by Web-crawler-to-detect-malicious-websites"
         }
-    # with open(output_file, "w") as jf:
-    #     json.dump(output_data, jf, ensure_ascii=False, indent=2)
     return output_data
+
+
+def add_output_in_jsonfile(output_path: pathlib.Path, output_data: dict):
+    try:
+        with open(output_path, "r") as jf_1:
+            existing_data = json.load(jf_1)
+    except FileNotFoundError:
+        existing_data = {}
+
+    existing_data.update(output_data)
+
+    with open(output_path, "w") as jf_2:
+        json.dump(existing_data, jf_2, indent=2)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Crawl a website and save the results.")
     parser.add_argument("--target", type=str, help="Target URL to crawl")
-    # parser.add_argument("--output", type=str, help="Output file name (example: data.json)")
+    parser.add_argument("--output", type=str, help="Output file name (example: data.json)")
 
     args = parser.parse_args()
 
-    # output_path: Final[pathlib.Path] = pathlib.Path(__file__).parent / args.output
+    output_path: Final[pathlib.Path] = pathlib.Path(__file__).parent / args.output
     try:
-        output_data = crawl(args.target)
+        output_data = {
+            "crawl": crawl(args.target)
+        }
     except RemoteDisconnected as e:
         output_data = {
-            "Error": "Remote end closed connection without response"
+            "crawl": {
+                "Error": "Remote end closed connection without response"
+            }
         }
+    add_output_in_jsonfile(output_path=output_path, output_data=output_data)
+
     print(output_data)

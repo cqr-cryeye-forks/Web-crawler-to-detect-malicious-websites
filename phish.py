@@ -123,15 +123,11 @@ def check_phish(url, output_path=None):
     if is_ip_address(url):
         data["final_score"] = 0.90
         data["phishing_probability"] = 90
-        # with open(output_path, 'w') as jf:
-        #     json.dump(data, jf, indent=4)
         return data
 
     domain, path = get_domain_info(url)
     if not domain:
         data["final_score"] = "Invalid URL"
-        # with open(output_path, 'w') as jf:
-        #     json.dump(data, jf, indent=4)
         return data
 
     score = [0] * 5
@@ -154,8 +150,6 @@ def check_phish(url, output_path=None):
     flag = brand_name_score(domain, brand_names, ignore_names, malicious_names)
     if isinstance(flag, str):
         data["final_score"] = flag
-        # with open(output_path, 'w') as jf:
-        #     json.dump(data, jf, indent=2)
         return data
     else:
         data["brand_name_score"] = flag
@@ -188,21 +182,35 @@ def check_phish(url, output_path=None):
     else:
         data["phishing_probability"] = final_score * 100
 
-    # with open(output_path, 'w') as jf:
-    #     json.dump(data, jf, indent=2)
     return data
+
+
+def add_output_in_jsonfile(output_path: pathlib.Path, output_data: dict):
+    try:
+        with open(output_path, "r") as jf_1:
+            existing_data = json.load(jf_1)
+    except FileNotFoundError:
+        existing_data = {}
+
+    existing_data.update(output_data)
+
+    with open(output_path, "w") as jf_2:
+        json.dump(existing_data, jf_2, indent=2)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Phishing URL Checker")
     parser.add_argument('--target', type=str, required=True, help="Target URL to check")
-    # parser.add_argument('--output', type=str, required=True, help="Output JSON file path")
+    parser.add_argument('--output', type=str, required=True, help="Output JSON file path")
     args = parser.parse_args()
 
     target_url = args.target
-    # output_path = args.output
+    output_path = args.output
 
-    # OUTPUT_JSON: Final[pathlib.Path] = pathlib.Path(__file__).parent / args.output
+    OUTPUT_JSON: Final[pathlib.Path] = pathlib.Path(__file__).parent / args.output
 
-    data = check_phish(target_url)
+    data = {"phish": check_phish(target_url)}
+
+    add_output_in_jsonfile(output_path=OUTPUT_JSON, output_data=data)
+
     print(data)
