@@ -206,9 +206,10 @@ if __name__ == "__main__":
 
     target_url = args.target
     output_path = args.output
+    OUTPUT_JSON: Final[pathlib.Path] = pathlib.Path(__file__).parent / output_path
 
     data = {"phish": check_phish(target_url)}
 
-    add_output_in_jsonfile(output_path=output_path, output_data=data)
+    add_output_in_jsonfile(output_path=OUTPUT_JSON, output_data=data)
 
     print(data)

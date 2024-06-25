@@ -99,6 +99,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     output_path = args.output
+    OUTPUT_JSON: Final[pathlib.Path] = pathlib.Path(__file__).parent / output_path
     try:
         output_data = {
             "crawl": crawl(args.target)
@@ -109,6 +110,6 @@ if __name__ == "__main__":
                 "Error": "Remote end closed connection without response"
             }
         }
-    add_output_in_jsonfile(output_path=output_path, output_data=output_data)
+    add_output_in_jsonfile(output_path=OUTPUT_JSON, output_data=output_data)
 
     print(output_data)
