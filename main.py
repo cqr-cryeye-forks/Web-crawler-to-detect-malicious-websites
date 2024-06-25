@@ -1,5 +1,7 @@
 import argparse
+import pathlib
 import subprocess
+from typing import Final
 
 
 def run_python_script(script_name, target, output):
@@ -27,10 +29,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    OUTPUT_JSON: Final[pathlib.Path] = pathlib.Path(__file__).parent / args.output
     # scripts = ['crawl.py', 'yara_demo.py', 'phish.py']
     scripts = ['crawl', 'phish']
 
     for script in scripts:
-        script_output = run_python_script(script, args.target, args.output)
+        script_output = run_python_script(script, args.target, OUTPUT_JSON)
 
     print(f"Output has been written to {args.output}")
